@@ -1,7 +1,7 @@
 from objects.environment import Environment
-from .globals import Globals
+from objects.environment_generator import Environment_Generator
+from globals import Globals
 
 
-env = Environment()
-
-env.run_sim()
+globals = Globals()
+generator = Environment_Generator(globals)

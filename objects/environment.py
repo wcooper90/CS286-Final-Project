@@ -1,5 +1,5 @@
 from .bot import Bot
-from .environment_generator import EnvironmentGenerator
+from .environment_generator import Environment_Generator
 
 
 class Environment():

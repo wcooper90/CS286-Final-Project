@@ -11,13 +11,19 @@ class Globals():
         return robots
 
 
-    self.width = 10
-    self.height = 10
-    self.res = 1
-    self.robot_coordinates = [[5, 1], [4, 8], [9, 3], [1, 6]]
-    self.num_robots = len(self.robot_coordinates)
-    self.robots = self.generate_bots(self.robot_coordinates)
+    width = 10
+    height = 10
+    res = 1
+    robot_coordinates = [[5, 1], [4, 8], [9, 3], [1, 6]]
+    num_robots = len(robot_coordinates)
+    # robots = generate_bots(robot_coordinates)
+    x_min = 0
+    y_min = 0
+    x_max = 10
+    y_max = 10
 
 
-    self.casualties = True
-    self.obstacles = False 
+    casualties = True
+    obstacles = False
+    num_obstacles = 5
+    num_casualties = 10
