@@ -1,5 +1,7 @@
 from .bot import Bot
 from .environment_generator import Environment_Generator
+from shapely.geometry import Point
+from .graph import Graph
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -18,6 +20,7 @@ class Environment():
         self.obstacles = self.env.obstacles
         self.time = globals.time
         self.globals = globals
+        self.graph_object = Graph(self.casualties, self.obstacles, self.bots)
 
 
     def run_sim(self):
@@ -32,7 +35,9 @@ class Environment():
             for bot in self.bots:
                 if bot.casualty_number is None:
                     self.assign_casualty(bot)
+                if self.obstacles:
                     self.plan_bot_trajectory(bot)
+
                 self.update_bot_input(bot)
 
             self.update()
@@ -44,9 +49,18 @@ class Environment():
             if i % 10 == 0:
                 self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
+                self.env_check()
+
+
+    def env_check(self):
+        if self.obstacles:
+            for bot in self.bots:
+                position = [bot.location[0], bot.location[1]]
+                assert(self.env.container_checker(position))
+
 
     def plan_bot_trajectory(self, bot):
-
+        
         pass
         # plan bot trajectory (the next set of points it should visit)
 
@@ -64,11 +78,16 @@ class Environment():
                 bot.aiding = True
 
             if bot.aiding_timer == 0:
-                casualty_vec = np.array([[casualty[0]], [casualty[1]]])
+                if self.obstacles:
+                    casualty_vec = np.array([[bot.next_point[0]], [bot.next_point[1]]])
+                else:
+                    casualty_vec = np.array([[casualty[0]], [casualty[1]]])
+
                 bot_vec = np.array([[bot.location[0]], [bot.location[1]]])
                 diff_vec = casualty_vec - bot_vec
                 directional_norm = list(diff_vec / np.sqrt(np.sum(diff_vec**2)))
                 bot.input = [directional_norm[0][0], directional_norm[1][0]]
+
             elif bot.aiding_timer >= 5:
                 self.env.casualties[bot.casualty_number][2] = 'v'
                 bot.aiding_timer = 0
