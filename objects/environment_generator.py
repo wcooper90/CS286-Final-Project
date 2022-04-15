@@ -3,7 +3,6 @@ from shapely.geometry import Polygon, Point, box
 import matplotlib.pyplot as plt
 import shapely.geometry as sg
 import shapely.ops as so
-import matplotlib.pyplot as plt
 import random
 import os
 
@@ -12,19 +11,24 @@ class Environment_Generator():
     def __init__(self, params):
         self.params = params
         self.obstacles = []
-        self.generate_obstacles()
+        # self.generate_obstacles()
         self.casualties = []
-        self.generate_casualties()
+        self.generate_casualties(random=False)
         self.plot_grid()
 
 
     # generator random locations for casualties based on global parameter
-    def generate_casualties(self):
-        for i in range(self.params.num_casualties):
-            point = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
-            while not self.casualty_checker(point):
+    def generate_casualties(self, random=True):
+        if random:
+            for i in range(self.params.num_casualties):
                 point = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
-            self.casualties.append((point[0], point[1], 'p'))
+                while not self.casualty_checker(point):
+                    point = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
+                self.casualties.append([point[0], point[1], 'p', False])
+        else:
+            casualties = [[1, 4], [2,3], [4, 8], [8, 2], [9, 7], [6,3], [6, 2], [5, 1], [3, 6], [5, 7]]
+            for casualty in casualties:
+                self.casualties.append([casualty[0], casualty[1], 'p', False])
 
 
     # make sure generated casualty point is not in an obstacle
@@ -74,4 +78,4 @@ class Environment_Generator():
 
     # TODO: create moving obstacles
     def shift_obstacles(self):
-        pass 
+        pass
