@@ -33,10 +33,11 @@ class Environment():
 
         for i in range(self.time):
             for bot in self.bots:
-                if bot.casualty_number is None:
-                    self.assign_casualty(bot)
-                if self.obstacles:
-                    self.plan_bot_trajectory(bot)
+                if not bot.finished:
+                    if bot.casualty_number is None:
+                        self.assign_casualty(bot)
+                    if self.obstacles and not bot.next_point and bot.casualty_number is not None:
+                        self.plan_bot_trajectory(bot)
 
                 self.update_bot_input(bot)
 
@@ -49,7 +50,9 @@ class Environment():
             if i % 10 == 0:
                 self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
-                self.env_check()
+                for i, bot in enumerate(self.bots):
+                    print(i, bot.casualty_number)
+                # self.env_check()
 
 
     def env_check(self):
@@ -60,8 +63,13 @@ class Environment():
 
 
     def plan_bot_trajectory(self, bot):
-        
-        pass
+        # if bot.casualty_number:
+        bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number][0], self.casualties[bot.casualty_number][1]])
+        # else:
+        #     bot.next_point = [bot.location]
+        # if not bot.next_point:
+
+
         # plan bot trajectory (the next set of points it should visit)
 
 
@@ -72,14 +80,20 @@ class Environment():
         if bot.casualty_number is not None:
 
             casualty = self.env.casualties[bot.casualty_number]
+
             if math.dist(bot.location, [casualty[0], casualty[1]]) < self.globals.min_dist_from_casualty:
                 bot.aiding_timer += 1
                 bot.input = [0, 0]
                 bot.aiding = True
+                bot.location = [casualty[0], casualty[1]]
+
+            elif self.obstacles and math.dist(bot.location, [bot.next_point[0][0], bot.next_point[0][1]]) < self.globals.min_dist_from_casualty:
+                bot.location = [bot.next_point[0][0], bot.next_point[0][1]]
+                bot.next_point.pop(0)
 
             if bot.aiding_timer == 0:
                 if self.obstacles:
-                    casualty_vec = np.array([[bot.next_point[0]], [bot.next_point[1]]])
+                    casualty_vec = np.array([[bot.next_point[0][0]], [bot.next_point[0][1]]])
                 else:
                     casualty_vec = np.array([[casualty[0]], [casualty[1]]])
 
@@ -88,14 +102,14 @@ class Environment():
                 directional_norm = list(diff_vec / np.sqrt(np.sum(diff_vec**2)))
                 bot.input = [directional_norm[0][0], directional_norm[1][0]]
 
-            elif bot.aiding_timer >= 5:
+            elif bot.aiding_timer >= 10:
                 self.env.casualties[bot.casualty_number][2] = 'v'
                 bot.aiding_timer = 0
                 bot.casualty_number = None
                 bot.aiding = False
+                bot.next_point = None
             else:
                 bot.aiding_timer += 1
-
         else:
             bot.input = [0, 0]
 
@@ -117,6 +131,8 @@ class Environment():
             bot.aiding = True
             bot.casualty_number = casualty_number
             self.env.casualties[casualty_number][3] = True
+        else:
+            bot.finished = True
 
 
     def update(self):
@@ -132,6 +148,7 @@ class Environment():
         plt.axes(ax)
         for i in range(len(self.env.casualties)):
             plt.scatter(self.casualties[i][0], self.casualties[i][1], marker=self.casualties[i][2], color='r')
+            plt.text(self.casualties[i][0], self.casualties[i][1], str(i))
 
         ax.set_aspect('equal', 'datalim')
 

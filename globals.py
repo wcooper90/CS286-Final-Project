@@ -21,6 +21,6 @@ class Globals():
     num_casualties = 10
 
 
-    time = 201
+    time = 401
 
     min_dist_from_casualty = 0.1

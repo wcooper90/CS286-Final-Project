@@ -8,6 +8,7 @@ import os
 
 
 class Environment_Generator():
+    
     def __init__(self, params):
         self.params = params
         self.obstacles = []
@@ -58,8 +59,8 @@ class Environment_Generator():
                 self.obstacles.append(r1)
         else:
             # manually added obstacles for consistency during testing
-            # obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9], [6,6], [7, 4], [8, 8], [3, 8], [4, 6]]
-            obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9]]
+            obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9], [6,6], [7, 4], [8, 8], [3, 8], [4, 6]]
+            # obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9]]
 
             for obstacle in obstacles:
                 r1 = sg.box(obstacle[0], obstacle[1], obstacle[0] + 1, obstacle[1] + 1)

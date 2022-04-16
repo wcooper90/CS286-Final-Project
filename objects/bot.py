@@ -14,11 +14,13 @@ class Bot():
         self.aiding_timer = 0
         self.aiding = False
         self.trajectory = [location]
+        self.finished = False
 
 
     def update(self):
-        self.location[0] += self.k * self.input[0]
-        self.location[1] += self.k * self.input[1]
-        self.trajectory.append(self.location)
-        # print(self.trajectory)
-        self.input = np.array([0, 0])
+        if not self.finished:
+            self.location[0] += self.k * self.input[0]
+            self.location[1] += self.k * self.input[1]
+            self.trajectory.append(self.location)
+            # print(self.trajectory)
+            self.input = np.array([0, 0])

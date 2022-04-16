@@ -57,7 +57,7 @@ class Graph():
         plt.scatter(x, y)
 
         for edge in self.edges:
-            plt.plot(*edge.xy)
+            plt.plot(*edge[0].xy)
 
         plt.savefig(os.getcwd() + "/graph.png")
 
@@ -70,7 +70,7 @@ class Graph():
             if obstacle.contains(line):
                 return False
 
-        self.edges.append(line)
+        self.edges.append([line, line.length, end])
         return True
 
 
@@ -88,4 +88,60 @@ class Graph():
 
 
     def dijkstras(self, init, end):
-        pass
+
+        def minDistance(dist, sptSet):
+            min_ = 1e7
+            min_index = 1e7
+
+            for v in range(len(self.graph)):
+                if dist[v] < min_ and sptSet[v] == False:
+                    min_ = dist[v]
+                    min_index = v
+
+            return min_index
+
+        def checkExistance(init, end):
+            node1edges = [node.location for node in self.graph[init].edges]
+            node2location = self.graph[end].location
+            for edge in node1edges:
+                if node2location == edge:
+                    return edge[1]
+            return False
+
+        num_vertices = len(self.graph)
+        dist = [1e7] * num_vertices
+        prev = [None] * num_vertices
+
+        start = None
+        for i, node in enumerate(self.graph):
+            if node.location == init:
+                start = i
+            if node.location == end:
+                end = i
+
+        dist[start] = 0
+        sptSet = [False] * num_vertices
+
+        for _ in range(num_vertices):
+
+            if dist[end] < 1e7:
+                break
+
+            u = minDistance(dist, sptSet)
+            sptSet[u] = True
+
+            for v in range(num_vertices):
+                length = checkExistance(u, v)
+                if length:
+                    if sptSet[v] == False and dist[v] > dist[u] + length:
+                        dist[v] = dist[u] + length
+                        prev[v] = u
+
+        curr = end
+        steps = []
+        while curr != start:
+            steps.insert(0, self.graph[curr].location)
+            curr = prev[curr]
+
+        print(steps)
+        return steps

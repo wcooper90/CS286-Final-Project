@@ -6,7 +6,7 @@ from objects.bot import Bot
 
 
 
-bots = [Bot([1, 1]), Bot([1, 1]), Bot([1, 1])]
+bots = [Bot([8.5, 10]), Bot([2, 1]), Bot([1, 1])]
 
 globals = Globals()
 environment = Environment(globals, bots)
