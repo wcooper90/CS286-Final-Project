@@ -1,26 +1,27 @@
-from objects.bot import Bot
-
-
 class Globals():
 
-
-    width = 10
-    height = 10
+    # plot parameters
+    width = 30
+    height = 30
     res = 1
-
-
     x_min = 0
     y_min = 0
-    x_max = 10
-    y_max = 10
+    x_max = 30
+    y_max = 30
 
-
+    # booleans
     casualties = True
-    obstacles = False
-    num_obstacles = 5
-    num_casualties = 10
+    obstacles = True
+    random_obstacles = True
+    random_casualties = True
+
+    # number of obstacles and casualties
+    num_obstacles = 20
+    num_casualties = 30
 
 
+    # total iterations allowed
     time = 251
 
+    # minimum distance from a casualty a bot has to be for it to be considered reached
     min_dist_from_casualty = 0.1
