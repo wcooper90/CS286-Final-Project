@@ -2,6 +2,7 @@ from .graph_node import GraphNode
 import shapely.geometry
 import matplotlib.pyplot as plt
 import os
+import math
 
 
 class Graph():
@@ -41,7 +42,8 @@ class Graph():
                     continue
                 else:
                     end = vertices[j].location
-                    if self.edge_validity_checker(start, end):
+                    bool = self.edge_validity_checker(start, end)
+                    if bool:
                         vertices[i].edges.append(vertices[j])
 
 
@@ -102,10 +104,11 @@ class Graph():
 
         def checkExistance(init, end):
             node1edges = [node.location for node in self.graph[init].edges]
+            node1location = self.graph[init].location
             node2location = self.graph[end].location
             for edge in node1edges:
                 if node2location == edge:
-                    return edge[1]
+                    return math.dist(node1location, node2location)
             return False
 
         num_vertices = len(self.graph)
@@ -124,14 +127,15 @@ class Graph():
 
         for _ in range(num_vertices):
 
-            if dist[end] < 1e7:
-                break
+            # if dist[end] < 1e7:
+            #     break
 
             u = minDistance(dist, sptSet)
             sptSet[u] = True
 
             for v in range(num_vertices):
                 length = checkExistance(u, v)
+                # print(length)
                 if length:
                     if sptSet[v] == False and dist[v] > dist[u] + length:
                         dist[v] = dist[u] + length
@@ -143,5 +147,4 @@ class Graph():
             steps.insert(0, self.graph[curr].location)
             curr = prev[curr]
 
-        print(steps)
         return steps

@@ -50,8 +50,6 @@ class Environment():
             if i % 10 == 0:
                 self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
-                for i, bot in enumerate(self.bots):
-                    print(i, bot.casualty_number)
                 # self.env_check()
 
 
