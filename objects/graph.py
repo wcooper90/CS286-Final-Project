@@ -30,7 +30,7 @@ class Graph():
 
         # append all casualty locations to vertex locations
         for casualty in self.casualties:
-            vertices.append(GraphNode([casualty[0], casualty[1]], 'casualty'))
+            vertices.append(GraphNode([casualty.x, casualty.y], 'casualty'))
 
         # append all bot locations to vertex locations
         for bot in self.bots:
@@ -167,5 +167,5 @@ class Graph():
             steps.insert(0, self.graph[curr].location)
             curr = prev[curr]
 
-        # return a sequence of steps the bot will take 
+        # return a sequence of steps the bot will take
         return steps

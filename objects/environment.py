@@ -2,6 +2,7 @@ from .bot import Bot
 from .environment_generator import Environment_Generator
 from shapely.geometry import Point
 from .graph import Graph
+from .enum import BotType, CasualtyType
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -9,12 +10,22 @@ import os
 
 
 class Environment():
-    def __init__(self, globals, bots):
+    def __init__(self, globals, bots, alpha=-3):
 
         self.width = globals.width
         self.height = globals.height
         self.res = globals.res
         self.bots = bots
+        self.pointsx = np.arange(0, self.width, self.res)
+        self.pointsy = np.arange(0, self.height, self.res)
+        self.alpha = alpha
+
+        self.dist = np.zeros((len(bots)))
+        self.motion = np.zeros((len(bots), 2))
+
+        # self.scavenger_bots = [bot in bots if bot.bot_type == BotType.scavenger]
+        # self.doctor_bots = [bot in bots if bot.bot_type == BotType.doctor]
+        # self.morgue_bots = [bot in bots if bot.bot_type == BotType.morgue]
 
         # generate landscape
         self.env = Environment_Generator(globals)
@@ -45,11 +56,11 @@ class Environment():
 
                 # if a bot has no casualty assigned to it, assign one
                 # if there are obstacles, use dijkstra's to calculate a trajectory
-                if not bot.finished:
-                    if bot.casualty_number is None:
-                        self.assign_casualty(bot)
-                    if self.obstacles and not bot.next_point and bot.casualty_number is not None:
-                        self.plan_bot_trajectory(bot)
+                self.bot_check(bot)
+                # if bot.casualty_number is None:
+                #     self.assign_casualty(bot)
+                # if self.obstacles and not bot.next_point and bot.casualty_number is not None:
+                #     self.plan_bot_trajectory(bot)
 
                 # update a bot's input
                 self.update_bot_input(bot)
@@ -67,25 +78,113 @@ class Environment():
             if i % 10 == 0:
                 self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
-                # self.env_check()
+
+            self.env_check()
+
+    def bot_check(self, bot):
+        if bot.bot_type == BotType.doctor or bot.bot_type == BotType.morgue:
+            if bot.casualty_number is None:
+                self.assign_casualty(bot)
+            if self.obstacles and not bot.next_point and bot.casualty_number is not None:
+                self.plan_bot_trajectory(bot)
 
 
     # TODO, a checking function run after every iteration to make sure constraints
     # have not been violated
     def env_check(self):
-        if self.obstacles:
-            for bot in self.bots:
-                position = [bot.location[0], bot.location[1]]
-                assert(self.env.container_checker(position))
+
+        # if self.obstacles:
+        #     for bot in self.bots:
+        #         position = [bot.location[0], bot.location[1]]
+        #         assert(self.env.container_checker(position))
+
+        for bot in self.bots:
+            if bot.bot_type == BotType.scavenger:
+                for casualty in self.casualties:
+                    if not casualty.found:
+                        casualty_location = np.array([[casualty.x], [casualty.y]])
+                        if math.dist(casualty_location, bot.location) < self.globals.scavenger_bot_sensing_radius:
+                            casualty.found = True
+                            if casualty.type == CasualtyType.injured:
+                                casualty.color = 'c'
+                            elif casualty.type == CasualtyType.dead:
+                                casualty.color = 'r'
+
+
+        # if len([casualty for casualty in self.env.casualties if not casualty.found]) > 0:
+        #     for bot in self.bots:
+        #         bot.finished = False
 
 
     # plan a bot's trajectory using Dijkstra's algorithm from the Graph class
     def plan_bot_trajectory(self, bot):
-        bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number][0], self.casualties[bot.casualty_number][1]])
+        bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number].x, self.casualties[bot.casualty_number].y])
 
 
-    # update a particular bot's input
+    # update a particular bot's input according to its type
     def update_bot_input(self, bot):
+        if bot.bot_type == BotType.doctor:
+            self.update_doctor_morgue_bot_input(bot)
+        elif bot.bot_type == BotType.scavenger:
+            self.update_scavenger_bot_input(bot)
+        elif bot.bot_type == BotType.morgue:
+            self.update_doctor_morgue_bot_input(bot)
+
+
+    def update_morgue_bot_input(self, bot):
+        pass
+
+
+    # update a scavenger bot's input
+    def update_scavenger_bot_input(self, bot):
+        # double integral over the plot space
+
+        gradient = (0, 0)
+        for x in self.pointsx:
+            for y in self.pointsy:
+
+                # use a phi value of 1, unless rv is already defined because
+                # of an existing target
+                value = 1
+                pos = np.array([x, y])
+
+                # determine g_alpha from mixing function
+                g_alpha = self.coverage_mix_func(pos, value)
+
+                # according to paper, discard if g_alpha is 0
+                if g_alpha == 0:
+                    continue
+
+                # retreive distance and motion stored in variables from call to mix_func
+                dist = self.dist[bot.bot_id]
+                motion = self.motion[bot.bot_id]
+
+                # calculate gradient
+                gradient += (dist / g_alpha) ** (self.alpha - 1) * motion * value
+
+        # apply gradient to input vector for each bot
+        gradient = list(gradient / np.sqrt(np.sum(gradient**2)))
+
+        # if round(gradient[0], 5) == 0 and round(gradient[1], 5) == 0:
+        #     bot.converged = True
+
+        bot.input = gradient
+
+
+    def coverage_mix_func(self, point, value=1):
+        total = 0
+        for i, bot in enumerate(self.bots):
+            dist = np.linalg.norm(point - bot.location)
+            self.motion[i] = point - bot.location
+            self.dist[i] = dist
+            if dist == 0:
+                return 0
+            total += dist ** self.alpha
+        return total ** (1/self.alpha)
+
+
+    # update a doctor bot's input
+    def update_doctor_morgue_bot_input(self, bot):
 
         # if a bot has a target to reach,
         if bot.casualty_number is not None:
@@ -93,13 +192,13 @@ class Environment():
             casualty = self.env.casualties[bot.casualty_number]
 
             # if the bot is within a specified distance from the casualty, consider the casualty reached
-            if math.dist(bot.location, [casualty[0], casualty[1]]) < self.globals.min_dist_from_casualty:
+            if math.dist(bot.location, [casualty.x, casualty.y]) < self.globals.min_dist_from_casualty:
                 # start the aiding timer
                 bot.aiding_timer += 1
                 bot.input = [0, 0]
                 bot.aiding = True
                 # switch the actual location of the bot to the original location of the casualty
-                bot.location = [casualty[0], casualty[1]]
+                bot.location = [casualty.x, casualty.y]
 
             # if the bot is within a specified distance from its trajectory's next point, switch to the next point as a target
             elif self.obstacles and math.dist(bot.location, [bot.next_point[0][0], bot.next_point[0][1]]) < self.globals.min_dist_from_casualty:
@@ -112,7 +211,7 @@ class Environment():
                 if self.obstacles:
                     casualty_vec = np.array([[bot.next_point[0][0]], [bot.next_point[0][1]]])
                 else:
-                    casualty_vec = np.array([[casualty[0]], [casualty[1]]])
+                    casualty_vec = np.array([[casualty.x], [casualty.y]])
 
                 # find the normalized difference of the bot's vector and its target's vector to find bot input
                 bot_vec = np.array([[bot.location[0]], [bot.location[1]]])
@@ -123,7 +222,7 @@ class Environment():
             # if the bot has already been at a casualty for 5 time steps, reset everything
             # and change the casualty's icon to mark it as aided
             elif bot.aiding_timer >= 5:
-                self.env.casualties[bot.casualty_number][2] = 'v'
+                self.env.casualties[bot.casualty_number].marker = 'v'
                 bot.aiding_timer = 0
                 bot.casualty_number = None
                 bot.aiding = False
@@ -144,8 +243,8 @@ class Environment():
         min_dist = 1000
         # find closest casualty
         for i, casualty in enumerate(self.env.casualties):
-            if not casualty[3]:
-                point = (casualty[0], casualty[1])
+            if casualty.found and not casualty.assigned and casualty.type == bot.assigned_casualty_type:
+                point = (casualty.x, casualty.y)
                 dist = math.dist(bot.location, point)
                 if dist < min_dist:
                     min_dist = dist
@@ -155,10 +254,11 @@ class Environment():
         if casualty_number is not None:
             bot.aiding = True
             bot.casualty_number = casualty_number
-            self.env.casualties[casualty_number][3] = True
-        # otherwise, there must be no more casualties left in the system
-        else:
-            bot.finished = True
+            self.env.casualties[casualty_number].assigned = True
+
+        # # otherwise, there must be no more casualties left in the system
+        # else:
+        #     bot.finished = True
 
 
     # tell each bot to actually update its position based on its calculated input
@@ -177,8 +277,8 @@ class Environment():
         # plot casualties and attach their number
         plt.axes(ax)
         for i in range(len(self.env.casualties)):
-            plt.scatter(self.casualties[i][0], self.casualties[i][1], marker=self.casualties[i][2], color='r')
-            plt.text(self.casualties[i][0], self.casualties[i][1], str(i))
+            plt.scatter(self.casualties[i].x, self.casualties[i].y, marker=self.casualties[i].marker, color=self.casualties[i].color)
+            plt.text(self.casualties[i].x, self.casualties[i].y, str(i))
         ax.set_aspect('equal', 'datalim')
 
         # plot obstacles
@@ -192,5 +292,5 @@ class Environment():
         for i in range(len(self.bots)):
             plt.scatter(x[i], y[i], color=self.bots[i].color, marker='+')
 
-        # save 
+        # save
         plt.savefig(os.getcwd() + "/data/" + str(title) + ".png")

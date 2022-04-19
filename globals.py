@@ -25,3 +25,6 @@ class Globals():
 
     # minimum distance from a casualty a bot has to be for it to be considered reached
     min_dist_from_casualty = 0.1
+
+
+    scavenger_bot_sensing_radius = 7

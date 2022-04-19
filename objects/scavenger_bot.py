@@ -8,6 +8,11 @@ class ScavengerBot(Bot):
         self.bot_type = BotType.scavenger
         self.bot_id = id
         self.color = 'y'
+        self.converged = False
+        self.k = 0.4
+
+        # hardcoded for now
+        self.sensing_radius = 10
 
     def say_bot_type(self):
         print("My bot_id is " + str(self.bot_id) + " and I am a scavenger bot!")

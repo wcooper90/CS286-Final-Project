@@ -5,6 +5,8 @@ import shapely.geometry as sg
 import shapely.ops as so
 import random
 import os
+from .casualty import Casualty
+from .enum import CasualtyType
 
 
 class Environment_Generator():
@@ -27,14 +29,22 @@ class Environment_Generator():
                 # make sure that randomly generated point is not inside an obstacle
                 while not self.container_checker(point):
                     point = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
-                self.casualties.append([point[0], point[1], 'p', False])
+
+                casualty_type = random.randint(0, 1)
+                if casualty_type == 0:
+                    casualty_type = CasualtyType.injured
+                elif casualty_type == 1:
+                    casualty_type = CasualtyType.dead
+                self.casualties.append(Casualty([point[0], point[1]], casualty_type))
+                # self.casualties.append([point[0], point[1], 'p', False])
         else:
             # manually added casualties for consistency during testing
             # casualties = [[1, 4], [2,3], [4, 8], [8, 2], [9, 7], [6,3], [6, 2], [5, 1], [3, 6], [5, 7]]
             casualties = [[5, 25], [3,6], [12, 15], [16, 28], [25, 6], [1,18], [29, 6], [4, 21], [16, 19], [2, 4]]
             # casualties = [[1, 4], [2,3], [4, 8], [8, 2], [9, 7]]
             for casualty in casualties:
-                self.casualties.append([casualty[0], casualty[1], 'p', False])
+                self.casualties.append(Casualty([casualty[0], casualty[1]], CasualtyType.injured))
+                # self.casualties.append([casualty[0], casualty[1], 'p', False])
 
 
     # make sure generated casualty point is not in an obstacle
@@ -79,7 +89,7 @@ class Environment_Generator():
         # plot casualties and their markers
         plt.axes(ax)
         for i in range(len(self.casualties)):
-            plt.scatter(self.casualties[i][0], self.casualties[i][1], marker=self.casualties[i][2], color='r')
+            plt.scatter(self.casualties[i].x, self.casualties[i].y, marker=self.casualties[i].marker, color=self.casualties[i].color)
         ax.set_aspect('equal', 'datalim')
 
         # plot obstacles

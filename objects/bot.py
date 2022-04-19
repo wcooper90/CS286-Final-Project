@@ -7,7 +7,7 @@ class Bot():
         self.location = location
         self.input = [0,0]
 
-        # bot's casualty parameters 
+        # bot's casualty parameters
         self.casualty_number = None
         self.aiding_timer = 0
         self.aiding = False
