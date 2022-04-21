@@ -2,11 +2,12 @@ from .bot import Bot
 from .environment_generator import Environment_Generator
 from shapely.geometry import Point
 from .graph import Graph
-from .enum import BotType, CasualtyType
+from .enum import BotType, CasualtyType, PlanningAlgorithmType
 import numpy as np
 import math
 import matplotlib.pyplot as plt
 import os
+import time
 
 
 class Environment():
@@ -28,7 +29,7 @@ class Environment():
         # self.morgue_bots = [bot in bots if bot.bot_type == BotType.morgue]
 
         # generate landscape
-        self.env = Environment_Generator(globals)
+        self.env = Environment_Generator(globals, self.bots)
         self.casualties = self.env.casualties
         self.obstacles = self.env.obstacles
 
@@ -36,12 +37,53 @@ class Environment():
         self.time = globals.time
         self.globals = globals
 
+        # motion planning algorithm
+        self.planning_algorithm = self.globals.planning_algorithm
+
         # collection of vertex nodes
-        self.graph_object = Graph(self.casualties, self.obstacles, self.bots)
+        self.graph_object = None
+
+
+    def reset_system(self):
+        # reset bots
+        coverage = False
+        for bot in self.bots:
+            if bot.bot_type == BotType.scavenger:
+                coverage = True
+            # hardcoded default starting position for bots
+            bot.location = [1, 1]
+            bot.input = [0, 0]
+            bot.casualty_number = None
+            bot.aiding_timer = 0
+            bot.next_point = None
+
+        # reset casualties
+        for casualty in self.casualties:
+            if coverage:
+                casualty.found = False
+            casualty.assigned = False
+            casualty.marker = 'p'
 
 
     # driver function
     def run_sim(self):
+        # if we've switched to a new planinng algorithm, update
+        self.planning_algorithm = self.globals.planning_algorithm
+
+        # if we've switched to no obstacles, update
+        if not self.globals.obstacles:
+            self.obstacles = []
+
+        # to calculate how much time passed during deployment (including graph creation)
+        start = time.time()
+
+        # if we've switched to a new planning algorithm, update graph
+        if self.planning_algorithm is not None:
+            self.graph_object = Graph(self.globals, self.casualties, self.obstacles,
+                                        self.bots, self.planning_algorithm)
+
+        # log planning algorithm type
+        print("*" * 40 + "LOG: Planning algorithm selected: " + str(self.planning_algorithm))
 
         # keep track of bot locations over time for plotting
         x = []
@@ -76,10 +118,27 @@ class Environment():
 
             # create a plot every 10 iterations
             if i % 10 == 0:
-                self.save_plot(x, y, i)
+                if self.globals.plot_data:
+                    self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
 
-            self.env_check()
+                self.env_check()
+
+        end = time.time()
+        print("The algorithm took: " + str(round(end - start, 4)) + " seconds to complete")
+        self.results_diagnosis()
+
+
+    def results_diagnosis(self):
+        num_casualties = len(self.casualties)
+        assigned_casualties = 0
+
+        for x in self.casualties:
+            if x.assigned:
+                assigned_casualties += 1
+
+        print('Final proportion of aided injuries: ' + str(round(assigned_casualties / num_casualties, 4)))
+
 
     def bot_check(self, bot):
         if bot.bot_type == BotType.doctor or bot.bot_type == BotType.morgue:
@@ -110,15 +169,18 @@ class Environment():
                             elif casualty.type == CasualtyType.dead:
                                 casualty.color = 'r'
 
-
-        # if len([casualty for casualty in self.env.casualties if not casualty.found]) > 0:
-        #     for bot in self.bots:
-        #         bot.finished = False
+        # for bot in self.bots:
+        #     print(bot.casualty_number)
 
 
     # plan a bot's trajectory using Dijkstra's algorithm from the Graph class
     def plan_bot_trajectory(self, bot):
-        bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number].x, self.casualties[bot.casualty_number].y])
+        if self.planning_algorithm == PlanningAlgorithmType.Global_Dijkstra:
+            bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number].x, self.casualties[bot.casualty_number].y])
+        elif self.planning_algorithm == PlanningAlgorithmType.RRT:
+            bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number].x, self.casualties[bot.casualty_number].y])
+        elif self.planning_algorithm == PlanningAlgorithmType.PSM:
+            bot.next_point = self.graph_object.dijkstras(bot.location, [self.casualties[bot.casualty_number].x, self.casualties[bot.casualty_number].y])
 
 
     # update a particular bot's input according to its type
@@ -127,12 +189,6 @@ class Environment():
             self.update_doctor_morgue_bot_input(bot)
         elif bot.bot_type == BotType.scavenger:
             self.update_scavenger_bot_input(bot)
-        elif bot.bot_type == BotType.morgue:
-            self.update_doctor_morgue_bot_input(bot)
-
-
-    def update_morgue_bot_input(self, bot):
-        pass
 
 
     # update a scavenger bot's input
@@ -171,6 +227,7 @@ class Environment():
         bot.input = gradient
 
 
+    # coverage algorithm mixing function
     def coverage_mix_func(self, point, value=1):
         total = 0
         for i, bot in enumerate(self.bots):
@@ -282,9 +339,10 @@ class Environment():
         ax.set_aspect('equal', 'datalim')
 
         # plot obstacles
-        for shape in self.obstacles:
-            xs, ys = shape.exterior.xy
-            ax.fill(xs, ys, alpha=0.7, fc='r', ec='none')
+        if self.globals.obstacles:
+            for shape in self.obstacles:
+                xs, ys = shape.exterior.xy
+                ax.fill(xs, ys, alpha=0.7, fc='r', ec='none')
 
         # plot trajectories, color coded to match bot type
         ax.set_xlim((-1, self.globals.x_max))

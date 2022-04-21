@@ -6,18 +6,34 @@ import shapely.ops as so
 import random
 import os
 from .casualty import Casualty
-from .enum import CasualtyType
+from .enum import CasualtyType, BotType
 
 
 class Environment_Generator():
 
-    def __init__(self, params):
+    def __init__(self, params, bots):
         # init function serves as driver code, generate obstacles, casualties, and plot the initial grid
         self.params = params
+        self.bots = bots
+        self.bot_locations = []
+        for bot in self.bots:
+            if (bot.location[0], bot.location[1]) not in self.bot_locations:
+                self.bot_locations.append((bot.location[0], bot.location[1]))
+
+        self.coverage = False
+        self.dead = False
+        for bot in self.bots:
+            if bot.bot_type == BotType.scavenger:
+                self.coverage = True
+            elif bot.bot_type == BotType.morgue:
+                self.dead = True
+
         self.obstacles = []
-        self.generate_obstacles(random_=self.params.random_obstacles)
+        if self.params.obstacles:
+            self.generate_obstacles(random_=self.params.random_obstacles)
         self.casualties = []
-        self.generate_casualties(random_=self.params.random_obstacles)
+        if self.params.casualties:
+            self.generate_casualties(random_=self.params.random_obstacles)
         self.plot_grid()
 
 
@@ -31,11 +47,18 @@ class Environment_Generator():
                     point = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
 
                 casualty_type = random.randint(0, 1)
-                if casualty_type == 0:
+                if self.dead:
+                    if casualty_type == 0:
+                        casualty_type = CasualtyType.injured
+                    elif casualty_type == 1:
+                        casualty_type = CasualtyType.dead
+                else:
                     casualty_type = CasualtyType.injured
-                elif casualty_type == 1:
-                    casualty_type = CasualtyType.dead
-                self.casualties.append(Casualty([point[0], point[1]], casualty_type))
+
+                if self.coverage:
+                    self.casualties.append(Casualty([point[0], point[1]], casualty_type))
+                else:
+                    self.casualties.append(Casualty([point[0], point[1]], casualty_type, found=True, color='c'))
                 # self.casualties.append([point[0], point[1], 'p', False])
         else:
             # manually added casualties for consistency during testing
@@ -47,12 +70,29 @@ class Environment_Generator():
                 # self.casualties.append([casualty[0], casualty[1], 'p', False])
 
 
-    # make sure generated casualty point is not in an obstacle
+    # make sure obstacles do not overlap
     def container_checker(self, point):
-        point = Point(point[0], point[1])
-        for obstacle in self.obstacles:
-            if obstacle.contains(point):
-                return False
+        if isinstance(point, list):
+            points = [(point[0][0], point[0][1]), (point[0][0] + self.params.obstacle_side_length, point[0][1]),
+                                (point[0][0], point[0][1] + self.params.obstacle_side_length),
+                                (point[0][0] + self.params.obstacle_side_length, point[0][1] + self.params.obstacle_side_length)]
+
+            for p in points:
+                p = Point(p[0], p[1])
+                for obstacle in self.obstacles:
+                    if obstacle.contains(p):
+                        return False
+                    if obstacle.intersects(p):
+                        return False
+
+        elif isinstance(point, tuple):
+            p = Point(point[0], point[1])
+            for obstacle in self.obstacles:
+                if obstacle.contains(p):
+                    return False
+                if obstacle.intersects(p):
+                    return False
+
         return True
 
 
@@ -63,12 +103,14 @@ class Environment_Generator():
             for i in range(self.params.num_obstacles):
                 init = (random.randint(self.params.x_min, self.params.x_max - 1),
                                  random.randint(self.params.y_min, self.params.y_max - 1))
-
+                while not self.container_checker([init]):
+                    init = (round(random.random() * self.params.x_max, 1), round(random.random() * self.params.y_max, 1))
                 # to make polygons other than boxes
                 # r1 = sg.Polygon([(init[0], init[1]), (init[0], init[1] + 1), (init[0] + 1, init[1]), (init[0] + 1, init[1] + 1)])
 
-                r1 = sg.box(init[0], init[1], init[0] + 1, init[1] + 1)
+                r1 = sg.box(init[0], init[1], init[0] + self.params.obstacle_side_length, init[1] + self.params.obstacle_side_length)
                 self.obstacles.append(r1)
+
         else:
             # manually added obstacles for consistency during testing
             # obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9], [6,6], [7, 4], [8, 8], [3, 8], [4, 6]]
@@ -76,8 +118,15 @@ class Environment_Generator():
             # obstacles = [[1, 5], [2,2], [1, 8], [4, 4], [8, 9]]
 
             for obstacle in obstacles:
-                r1 = sg.box(obstacle[0], obstacle[1], obstacle[0] + 1, obstacle[1] + 1)
+                r1 = sg.box(obstacle[0], obstacle[1], obstacle[0] + self.params.obstacle_side_length, obstacle[1] + self.params.obstacle_side_length)
                 self.obstacles.append(r1)
+
+        # make sure none of the obstacles are where the bots start
+        for i, obstacle in enumerate(self.obstacles):
+            for location in self.bot_locations:
+                point = Point(location[0], location[1])
+                if obstacle.contains(point):
+                    self.obstacles.remove(obstacle)
 
 
     # plot only the casualties and obstacles

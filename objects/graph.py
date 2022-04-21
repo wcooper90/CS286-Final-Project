@@ -3,23 +3,68 @@ import shapely.geometry
 import matplotlib.pyplot as plt
 import os
 import math
+from .enum import PlanningAlgorithmType
+import random
 
 
 class Graph():
-    def __init__(self, casualties, obstacles, bots):
+    def __init__(self, globals, casualties, obstacles, bots, planning_algorithm):
         # driver function, creates and plots the graph
         self.obstacles = obstacles
         self.casualties = casualties
         self.bots = bots
         self.edges = []
+        self.planning_algorithm = planning_algorithm
+        self.globals = globals
 
         # this is just a collection of vertex nodes
-        self.graph = self.construct_vertices()
+        self.graph = self.construct_vertices_helper()
         self.plot_graph()
 
 
+    # change graph type depending on the motion planning algorithm
+    def construct_vertices_helper(self):
+        print("*" * 40 + 'LOG: creating graph')
+        if self.planning_algorithm == PlanningAlgorithmType.Global_Dijkstra:
+            return self.construct_vertices_dijkstras()
+        if self.planning_algorithm == PlanningAlgorithmType.PSM:
+            return self.construct_vertices_PSM()
+        if self.planning_algorithm == PlanningAlgorithmType.RRT:
+            return self.contruct_vertices_RRT()
+
+
+    # construct the vertex nodes of the probabilistic sampling graph
+    def construct_vertices_PSM(self):
+        vertices = []
+
+        # generate a number of random points spread through the plot based on a density constant
+        for i in range(int(self.globals.PSM_density * self.globals.width * self.globals.height)):
+            x = round(random.random() * self.globals.x_max, 3)
+            y = round(random.random() * self.globals.y_max, 3)
+            point = shapely.geometry.Point((x, y))
+            while not self.vertex_validity_checker(point):
+                x = round(random.random() * self.globals.x_max, 3)
+                y = round(random.random() * self.globals.y_max, 3)
+                point = shapely.geometry.Point((x, y))
+
+            vertices.append(GraphNode([x, y], 'random point'))
+
+        # append all casualty locations to vertex locations
+        for casualty in self.casualties:
+            vertices.append(GraphNode([casualty.x, casualty.y], 'casualty'))
+
+        # append all bot locations to vertex locations
+        for bot in self.bots:
+            vertices.append(GraphNode([bot.location[0], bot.location[1]], 'bot'))
+
+        # connect all edges based on existed vertices and return
+        print("*" * 40 + 'LOG: constructing edges')
+        self.construct_edges(vertices)
+        return vertices
+
+
     # construct the vertex nodes of the graph
-    def construct_vertices(self):
+    def construct_vertices_dijkstras(self):
         vertices = []
 
         # append all corners of convex obstacles to vertex locations
@@ -37,6 +82,7 @@ class Graph():
             vertices.append(GraphNode([bot.location[0], bot.location[1]], 'bot'))
 
         # connect all edges based on existed vertices and return
+        print("*" * 40 + 'LOG: constructing edges')
         self.construct_edges(vertices)
         return vertices
 
@@ -71,6 +117,10 @@ class Graph():
             y.append(node.location[1])
         plt.scatter(x, y)
 
+        ax.set_xlim((-1, self.globals.x_max))
+        ax.set_ylim((-1, self.globals.y_max))
+        ax.set_aspect('equal', 'datalim')
+        
         # plot edges (Line objects)
         for edge in self.edges:
             plt.plot(*edge[0].xy)
@@ -93,6 +143,14 @@ class Graph():
         self.edges.append([line, line.length, end])
         return True
 
+
+    # make sure that random points generated for PSM are not in obstacles
+    def vertex_validity_checker(self, point):
+        point = shapely.geometry.Point(point)
+        for obstacle in self.obstacles:
+            if obstacle.contains(point):
+                return False
+        return True
 
 
     def sample_based_graph_construction(self):
@@ -118,6 +176,7 @@ class Graph():
                 if dist[v] < min_ and sptSet[v] == False:
                     min_ = dist[v]
                     min_index = v
+            assert(min_ < 1e7)
             return min_index
 
         # check to see if there is an edge between two proposed nodes
@@ -149,6 +208,7 @@ class Graph():
 
         # iterate through all points, find next minimum distance
         for _ in range(num_vertices):
+            # print(sptSet)
             u = minDistance(dist, sptSet)
             sptSet[u] = True
             # then look for the minimum distance node's edge existance and update parameters
