@@ -9,7 +9,7 @@ class ScavengerBot(Bot):
         self.bot_id = id
         self.color = 'y'
         self.converged = False
-        self.k = 0.4
+        self.k = 0.3
 
         # hardcoded for now
         self.sensing_radius = 10

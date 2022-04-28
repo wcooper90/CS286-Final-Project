@@ -110,6 +110,7 @@ class Graph():
 
         # scatter nodes
         fig, ax = plt.subplots()
+
         x = []
         y = []
         for node in self.graph:
@@ -117,15 +118,16 @@ class Graph():
             y.append(node.location[1])
         plt.scatter(x, y)
 
-        ax.set_xlim((-1, self.globals.x_max))
-        ax.set_ylim((-1, self.globals.y_max))
+        ax.set_xlim((self.globals.x_min, self.globals.x_max))
+        ax.set_ylim((self.globals.y_min, self.globals.y_max))
         ax.set_aspect('equal', 'datalim')
-        
+
         # plot edges (Line objects)
         for edge in self.edges:
             plt.plot(*edge[0].xy)
 
-        plt.savefig(os.getcwd() + "/graph.png")
+
+        plt.savefig(os.getcwd() + "/graph" + str(self.globals.graph_number) + ".png")
 
 
     # check if a proposed edge is legitimate

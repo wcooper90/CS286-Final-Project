@@ -1,5 +1,5 @@
 from .bot import Bot
-from .environment_generator import Environment_Generator
+from .environment_generator1 import Environment_Generator
 from shapely.geometry import Point
 from .graph import Graph
 from .enum import BotType, CasualtyType, PlanningAlgorithmType
@@ -64,6 +64,8 @@ class Environment():
             casualty.assigned = False
             casualty.marker = 'p'
 
+        self.globals.graph_number += 1
+
 
     # driver function
     def run_sim(self):
@@ -122,7 +124,16 @@ class Environment():
                     self.save_plot(x, y, i)
                 print("Iteration: " + str(i))
 
-                self.env_check()
+
+            if self.globals.moving_obstacles:
+                if i % self.globals.obstacle_shift_frequency == 0:
+                    self.env.shift_obstacles()
+                    self.obstacles = self.env.obstacles
+                    if self.planning_algorithm is not None:
+                        self.graph_object = Graph(self.globals, self.casualties, self.obstacles,
+                                                    self.bots, self.planning_algorithm)
+
+            self.env_check()
 
         end = time.time()
         print("The algorithm took: " + str(round(end - start, 4)) + " seconds to complete")
@@ -132,12 +143,16 @@ class Environment():
     def results_diagnosis(self):
         num_casualties = len(self.casualties)
         assigned_casualties = 0
+        found_casualties = 0
 
         for x in self.casualties:
             if x.assigned:
                 assigned_casualties += 1
+            if x.found:
+                found_casualties += 1
 
         print('Final proportion of aided injuries: ' + str(round(assigned_casualties / num_casualties, 4)))
+        print('Final proportion of found injuries: ' + str(round(found_casualties / num_casualties, 4)))
 
 
     def bot_check(self, bot):
@@ -185,7 +200,7 @@ class Environment():
 
     # update a particular bot's input according to its type
     def update_bot_input(self, bot):
-        if bot.bot_type == BotType.doctor:
+        if bot.bot_type == BotType.doctor or bot.bot_type == BotType.morgue:
             self.update_doctor_morgue_bot_input(bot)
         elif bot.bot_type == BotType.scavenger:
             self.update_scavenger_bot_input(bot)
