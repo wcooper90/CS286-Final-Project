@@ -9,6 +9,10 @@ def plot():
 
     # fig = plt.figure()
     fig, ax = plt.subplots()
+
+    # manually plug these numbers in. These numbers come from results documented at
+    # https://docs.google.com/spreadsheets/d/1VHnBQxjCSiNHenB_PuUABOYHCSfrxBhYpFQ7wKoQWDc/edit?usp=sharing
+    # (must have a Harvard gmail account to access)
     density = ['0.001', '0.01', '0.1', '0.15']
     data = [66, 68, 76, 74]
     ax.bar(density, data)
