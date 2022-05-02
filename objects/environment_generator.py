@@ -72,6 +72,8 @@ class Environment_Generator():
 
     # make sure obstacles do not overlap
     def container_checker(self, point):
+
+        # checking if an obstacle overlaps with other things
         if isinstance(point, list):
             points = [(point[0][0], point[0][1]), (point[0][0] + self.params.obstacle_side_length, point[0][1]),
                                 (point[0][0], point[0][1] + self.params.obstacle_side_length),
@@ -85,6 +87,7 @@ class Environment_Generator():
                     if obstacle.intersects(p):
                         return False
 
+        # checking if a particular casualty overlaps with other things 
         elif isinstance(point, tuple):
             p = Point(point[0], point[1])
             for obstacle in self.obstacles:

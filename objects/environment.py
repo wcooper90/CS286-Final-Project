@@ -140,6 +140,7 @@ class Environment():
         self.results_diagnosis()
 
 
+    # print some preliminary results
     def results_diagnosis(self):
         num_casualties = len(self.casualties)
         assigned_casualties = 0
@@ -155,6 +156,7 @@ class Environment():
         print('Final proportion of found injuries: ' + str(round(found_casualties / num_casualties, 4)))
 
 
+    # check a bot and assign casualties accordingly
     def bot_check(self, bot):
         if bot.bot_type == BotType.doctor or bot.bot_type == BotType.morgue:
             if bot.casualty_number is None:
@@ -163,14 +165,9 @@ class Environment():
                 self.plan_bot_trajectory(bot)
 
 
-    # TODO, a checking function run after every iteration to make sure constraints
+    #  a checking function run after every iteration to make sure constraints
     # have not been violated
     def env_check(self):
-
-        # if self.obstacles:
-        #     for bot in self.bots:
-        #         position = [bot.location[0], bot.location[1]]
-        #         assert(self.env.container_checker(position))
 
         for bot in self.bots:
             if bot.bot_type == BotType.scavenger:
@@ -183,9 +180,6 @@ class Environment():
                                 casualty.color = 'c'
                             elif casualty.type == CasualtyType.dead:
                                 casualty.color = 'r'
-
-        # for bot in self.bots:
-        #     print(bot.casualty_number)
 
 
     # plan a bot's trajectory using Dijkstra's algorithm from the Graph class
