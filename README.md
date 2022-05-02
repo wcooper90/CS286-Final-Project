@@ -2,6 +2,9 @@
 # CS286: Multi-Agent Systems
 # Final Project
 
+Project description:
+For the software simulation aspect of CS286, we write a set of classes with which to simulate autonomous robot swarms reacting to Mass Casualty Incidents (MCIs). This repository allows one to define an environment with casualties, obstacles, bot locations, coverage, task allocation, and motion planning algorithms. Simulations can be evaluated, plotted, and animated. We primarily use the code to study effects of different motion planning graph formulation algorithms on overall runtime and performance.
+
 
 Repository description:
 - graphics:
