@@ -18,7 +18,7 @@ class Globals():
     plot_data = True
 
     # moving obstacles
-    moving_obstacles = True
+    moving_obstacles = False
     moving_obstacle_probability = 0.3
 
     # obstacles will move with the above probability for every batch of the below iterations
@@ -28,7 +28,7 @@ class Globals():
     obstacle_max_shift = 1
 
     # number of obstacles and casualties
-    num_obstacles = 5
+    num_obstacles = 10
     num_casualties = 15
 
     # size of obstacles
@@ -47,13 +47,13 @@ class Globals():
 
     graph_number = 0
 
-    # strictly greedy policy
+    # strictly greedy policy, ignores obstacles 
     planning_algorithm = None
 
     # Probablistic Sampling Method
     planning_algorithm = PlanningAlgorithmType.PSM
 
-    PSM_density = 0.05
+    PSM_density = 0.01
     # Rapidly-Exploring Random Tree
     # planning_algorithm = PlanningAlgorithmType.RRT
 
